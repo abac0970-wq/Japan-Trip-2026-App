@@ -237,7 +237,7 @@
                 <div class="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur rounded-xl p-3 shadow-lg border border-white/50 z-10 flex justify-between items-center">
                     <div class="text-sm font-bold text-slate-800">📍 {{ currentDay.items.filter(i=>i.location).length }} 個地點</div>
                     <div class="flex gap-2">
-                        <button @click="initMap" class="p-2 bg-teal-100 text-teal-600 rounded-lg"><i class="ph-bold ph-arrows-clockwise"></i></button>
+                        <button @click="initMap(currentDay.items)" class="p-2 bg-teal-100 text-teal-600 rounded-lg"><i class="ph-bold ph-arrows-clockwise"></i></button>
                         <button @click="centerOnUser" class="p-2 bg-blue-500 text-white rounded-lg shadow-md"><i class="ph-bold ph-crosshair"></i></button>
                     </div>
                 </div>
@@ -247,10 +247,10 @@
             <div v-if="viewMode === 'money'" class="p-4 pb-24">
                 <div class="bg-teal-600 text-white rounded-2xl p-6 shadow-lg mb-6 text-center relative">
                     <div class="absolute top-4 right-4 flex flex-col items-end">
-                        <label class="text-[10px] text-teal-200 mb-1">匯率 ({{ currencyLabel }})</label>
+                        <label class="text-[10px] text-teal-200 mb-1">匯率 ({{ currencyLabel }}:NT$)</label>
                         <input v-model.number="exchangeRate" type="number" step="0.001" class="w-16 text-right text-xs text-teal-900 rounded px-1 py-0.5">
                     </div>
-                    <div class="text-sm opacity-80 mb-1">總支出 Total</div>
+                    <div class="text-sm opacity-80 mb-1">總支出 Total ({{ currencyLabel }})</div>
                     <div class="text-4xl font-bold font-mono">{{ currencySymbol }} {{ totalExpense.toLocaleString() }}</div>
                     <div class="text-lg font-bold text-teal-200 mt-1">≈ NT$ {{ Math.round(totalExpense * exchangeRate).toLocaleString() }}</div>
                 </div>
@@ -261,12 +261,12 @@
                 </div>
                 <div class="grid grid-cols-2 gap-2 mb-6">
                     <div v-for="p in participants" :key="p" class="bg-white p-3 rounded-xl border border-slate-100 text-center shadow-sm">
-                        <div class="text-xs text-slate-400 mb-1">{{ p }} 墊付</div>
+                        <div class="text-xs text-slate-400 mb-1">{{ p }} 墊付 ({{ currencyLabel }})</div>
                         <div class="text-sm font-bold text-teal-600">{{ currencySymbol }}{{ paidByPerson[p]?.toLocaleString() || 0 }}</div>
                     </div>
                 </div>
                 <div v-if="settlementPlan.length > 0" class="bg-teal-50 rounded-xl p-4 mb-6 border border-teal-100">
-                    <h3 class="text-xs font-bold text-teal-400 uppercase tracking-wide mb-3">結帳建議</h3>
+                    <h3 class="text-xs font-bold text-teal-400 uppercase tracking-wide mb-3">結帳建議 ({{ currencyLabel }})</h3>
                     <div class="space-y-2">
                         <div v-for="(plan, idx) in settlementPlan" :key="idx" class="flex items-center justify-between text-sm bg-white p-2 rounded-lg shadow-sm">
                             <span class="font-bold text-slate-600">{{ plan.from }} <i class="ph-bold ph-arrow-right text-xs"></i> {{ plan.to }}</span>
@@ -274,26 +274,49 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- 新增支出區塊 (已新增幣別選擇) -->
                 <div class="bg-white rounded-xl shadow-sm p-4 mb-6 border border-slate-100">
+                    <!-- 項目 & 付款人 -->
                     <div class="flex gap-2 mb-2">
                         <input v-model="newExpense.item" placeholder="項目" class="w-[65%] bg-slate-50 border-none rounded-lg text-sm px-3 py-2">
                         <select v-model="newExpense.payer" class="flex-1 bg-slate-50 border-none rounded-lg text-sm px-2 py-2 min-w-0">
                             <option v-for="p in participants" :value="p">{{ p }}</option>
                         </select>
                     </div>
+                    <!-- 金額 & 幣別 -->
                     <div class="flex gap-2">
-                        <input v-model.number="newExpense.amount" type="number" :placeholder="currencySymbol + ' 金額'" class="w-full bg-slate-50 border-none rounded-lg text-sm pl-3 pr-3 py-2 font-mono">
+                        <div class="flex-1 flex gap-2">
+                            <!-- 幣別選擇 -->
+                            <select v-model="newExpense.currency" class="w-20 bg-slate-50 border-none rounded-lg text-sm px-2 py-2 min-w-0 font-mono text-center">
+                                <option value="JPY">JPY ¥</option>
+                                <option value="TWD">TWD NT$</option>
+                            </select>
+                            <!-- 金額輸入 -->
+                            <input v-model.number="newExpense.amount" type="number" placeholder="金額" class="flex-1 bg-slate-50 border-none rounded-lg text-sm pl-3 pr-3 py-2 font-mono">
+                        </div>
                         <button @click="addExpense" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-bold"><i class="ph-bold ph-plus"></i></button>
                     </div>
                 </div>
+
+                <!-- 支出列表 (顯示換算細節) -->
                 <div class="space-y-3">
                     <div v-for="(exp, idx) in expenses" :key="idx" class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-xs font-bold">{{ exp.payer.charAt(0) }}</div>
-                            <div><div class="font-bold text-slate-700 text-sm">{{ exp.item }}</div></div>
+                            <div>
+                                <div class="font-bold text-slate-700 text-sm">{{ exp.item }}</div>
+                                <!-- 顯示原始幣別和金額 -->
+                                <div class="text-[10px] text-slate-400 mt-0.5">
+                                    {{ exp.currency }} {{ exp.amount.toLocaleString() }}
+                                </div>
+                            </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="font-mono font-bold text-slate-700">{{ currencySymbol }}{{ exp.amount.toLocaleString() }}</span>
+                            <!-- 顯示換算後的總帳金額 (使用外幣) -->
+                            <span class="font-mono font-bold text-slate-700 text-base">
+                                <span class="text-sm text-teal-500 mr-0.5">≈{{ currencySymbol }}</span> {{ exp.convertedAmount.toLocaleString() }}
+                            </span>
                             <button @click="removeExpense(idx)" class="text-slate-300 hover:text-red-400"><i class="ph-fill ph-x-circle"></i></button>
                         </div>
                     </div>
@@ -421,14 +444,14 @@
             });
         }
         
-        // --- 匯入的名古屋 8 日行程範本 ---
+        // --- 匯入的名古屋 8 日行程範本 (已更新航班資訊) ---
         const getInitialItems = (dayIndex) => {
             const nagoyaData = [
-                // Day 1: 5/1 抵達名古屋・榮區散策
-                { title: '抵達名古屋・榮區散策', flight: { type: 'arrival', startTime: '15:00', startAirport: 'TPE', number: 'CI/BR/JL', endTime: '18:00', endAirport: 'NGO', arrivalOffset: 0 }, items: [
-                    { time: '18:30', type: 'transport', activity: '機場 → 名古屋 (μSky或名鐵特急)', location: '中部機場', note: '車程約 30-40 分鐘' },
-                    { time: '19:30', type: 'food', activity: '世界の山ちゃん (幻の手羽先)', location: '榮區', note: '主推 / 備選: 山本屋味噌煮込み、味仙 (台灣拉麵)' },
-                    { time: '21:00', type: 'spot', activity: '榮區散策', location: '榮區', note: '欣賞名古屋電視塔' }
+                // Day 1: 5/1 抵達名古屋・榮區散策 - **更新去程航班**
+                { title: '抵達名古屋・榮區散策', flight: { type: 'arrival', startTime: '17:05', startAirport: 'RMQ', number: 'IT778', endTime: '20:55', endAirport: 'NGO', arrivalOffset: 0, note: 'Terminal 2' }, items: [
+                    { time: '21:30', type: 'transport', activity: '機場 → 名古屋 (μSky或名鐵特急)', location: '中部機場', note: '車程約 30-40 分鐘' },
+                    { time: '22:30', type: 'food', activity: '世界の山ちゃん (幻の手羽先)', location: '榮區', note: '主推 / 備選: 山本屋味噌煮込み、味仙 (台灣拉麵)' },
+                    { time: '23:30', type: 'spot', activity: '飯店 Check-in', location: '名古屋車站周邊', note: '' }
                 ]},
                 // Day 2: 5/2 名古屋城・熱田神宮・大須商店街
                 { title: '名古屋城・熱田神宮・大須商店街', flight: null, items: [
@@ -472,11 +495,11 @@
                     { time: '15:00', type: 'shop', activity: 'BIC Camera 採購', location: 'BIC Camera 名古屋站', note: '電器、藥妝' },
                     { time: '17:00', type: 'food', activity: '晚餐', location: '名古屋車站地下街', note: '最後品嚐名古屋美食' }
                 ]},
-                // Day 8: 5/8 回程・最後採購
-                { title: '回程・最後採購', flight: { type: 'departure', startTime: '19:00', startAirport: 'NGO', number: 'CI/BR/JL', endTime: '22:00', endAirport: 'TPE', arrivalOffset: 0 }, items: [
+                // Day 8: 5/8 回程・最後採購 - **更新回程航班**
+                { title: '回程・最後採購', flight: { type: 'departure', startTime: '13:45', startAirport: 'NGO', number: 'IT779', endTime: '16:05', endAirport: 'RMQ', arrivalOffset: 0, note: 'Terminal 2' }, items: [
                     { time: '09:00', type: 'shop', activity: '飯店周邊最後採購', location: '飯店附近', note: '便利商店或超市' },
                     { time: '12:00', type: 'food', activity: '車站便當', location: 'JR 名古屋站', note: '在車站購買午餐' },
-                    { time: '16:00', type: 'transport', activity: '前往中部機場', location: '名古屋車站', note: '預留充足時間' }
+                    { time: '11:00', type: 'transport', activity: '前往中部機場', location: '名古屋車站', note: '預留充足時間' }
                 ]},
             ];
 
@@ -505,16 +528,16 @@
                 const expenses = ref([]);
                 const participants = ref(['我', '旅伴A']);
                 const participantsStr = ref('我, 旅伴A');
-                const exchangeRate = ref(0.215);
-                const newExpense = ref({ item: '', amount: '', payer: '我' });
+                const exchangeRate = ref(0.215); // TWD per JPY (1 JPY = 0.215 TWD)
+                const newExpense = ref({ item: '', amount: null, payer: '我', currency: 'JPY' }); // 新增 currency 欄位
 
-                // 暫存與設定 (預設為名古屋 8 日行程)
+                // 暫存與設定 
                 const isRateLoading = ref(false);
                 const isMapLoading = ref(false);
                 const userLocation = ref(null);
                 const weather = ref({ temp: null, icon: 'ph-sun', code: 0, location: '', daily: [] });
-                // 預設設定改為名古屋 (Nagoya, 8 days, JPY)
-                const setup = ref({ destination: 'Nagoya', startDate: new Date().toISOString().split('T')[0], days: 8, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' });
+                // 預設設定改為名古屋 (Nagoya, 2026/05/01, 8 days, JPY)
+                const setup = ref({ destination: 'Nagoya', startDate: '2026-05-01', days: 8, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' });
 
                 // 智慧推薦系統
                 const recommendationsMap = reactive({});
@@ -522,12 +545,20 @@
                 const searchTargetIndex = ref(''); 
 
                 // --- Computed ---
+                // 修正 ReferenceError：確保 currentDay 在 setup 函數內部被定義
                 const currentDay = computed(() => days.value[currentDayIdx.value] || {items:[], flight:null, date:'', title:''});
-                const totalExpense = computed(() => expenses.value.reduce((sum, item) => sum + item.amount, 0));
+                
+                // 匯率反向計算 (用於總支出 NT$ 顯示)
+                const twdToForeignRate = computed(() => 1 / exchangeRate.value); 
+
+                // 總支出計算，使用 convertedAmount (已換算為外幣)
+                const totalExpense = computed(() => expenses.value.reduce((sum, item) => sum + item.convertedAmount, 0));
+                
                 const paidByPerson = computed(() => {
                     const map = {};
                     participants.value.forEach(p => map[p] = 0);
-                    expenses.value.forEach(e => { if (map[e.payer] === undefined) map[e.payer] = 0; map[e.payer] += e.amount; });
+                    // 使用 convertedAmount 進行分帳計算
+                    expenses.value.forEach(e => { if (map[e.payer] === undefined) map[e.payer] = 0; map[e.payer] += e.convertedAmount; });
                     return map;
                 });
                 const settlementPlan = computed(() => {
@@ -597,7 +628,48 @@
                 const removeCurrentDay = () => { if(days.value.length>1 && confirm('刪除?')) days.value.splice(currentDayIdx.value, 1); };
                 // 修正 Google 地圖連結的格式，確保能正確查詢
                 const getGoogleMapLink = (loc) => loc ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}` : '#';
-                const addExpense = () => { if(newExpense.value.item) { expenses.value.unshift({...newExpense.value}); newExpense.value.item=''; newExpense.value.amount=''; }};
+                
+                // 新增支出邏輯 (處理幣別換算)
+                const addExpense = () => { 
+                    const item = newExpense.value;
+                    if (!item.item || !item.amount || item.amount <= 0) return;
+                    
+                    let convertedAmount = item.amount;
+                    const foreignCurrency = setup.value.currency;
+                    
+                    // 只有在幣別是 TWD 且外幣不是 TWD 時才進行換算
+                    if (item.currency === 'TWD' && foreignCurrency !== 'TWD' && exchangeRate.value > 0) {
+                        // TWD -> Foreign Currency (JPY in this case). 
+                        // Formula: TWD amount / (TWD per Foreign Currency rate)
+                        // Note: exchangeRate is TWD per JPY (0.215 TWD/JPY)
+                        convertedAmount = item.amount / exchangeRate.value;
+                    } 
+                    // 如果輸入的外幣與設定的外幣相同，則不需換算
+                    else if (item.currency === foreignCurrency) {
+                        convertedAmount = item.amount;
+                    }
+                    // 否則，假設使用 TWD 以外的其他幣別(非外幣)，這裡保持原始金額 (但 App 預設只處理 JPY/TWD)
+                    else {
+                        // For simplicity, if currency is not JPY or TWD, use original amount and display conversion error. 
+                        // But since we only provide JPY/TWD select, this branch is mainly for TWD->Foreign fallback.
+                        convertedAmount = item.amount;
+                    }
+
+                    expenses.value.unshift({
+                        item: item.item,
+                        payer: item.payer,
+                        amount: item.amount, // 原始金額 (例如: 200 TWD 或 1000 JPY)
+                        currency: item.currency, // 原始幣別
+                        convertedAmount: Math.round(convertedAmount) // 換算後的帳務金額 (日幣 JPY), 取整數
+                    });
+
+                    // Reset input fields
+                    newExpense.value.item = '';
+                    newExpense.value.amount = null;
+                    newExpense.value.payer = '我';
+                    newExpense.value.currency = setup.value.currency; // 預設回到主要外幣
+                };
+                
                 const removeExpense = (idx) => expenses.value.splice(idx, 1);
 
                 // --- LBS 推薦功能 ---
@@ -695,8 +767,8 @@
                     localStorage.setItem('travel_app_index', JSON.stringify(tripList.value));
                 };
                 const createNewTrip = () => {
-                    // 重設為名古屋預設值
-                    setup.value = { destination: 'Nagoya', startDate: new Date().toISOString().split('T')[0], days: 8, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' };
+                    // 重設為名古屋預設值 (2026/05/01, 8 days)
+                    setup.value = { destination: 'Nagoya', startDate: '2026-05-01', days: 8, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' };
                     showSetupModal.value = true;
                     showTripMenu.value = false;
                 };
@@ -763,7 +835,13 @@
                     const lConf = localStorage.getItem(`${id}_config`);
 
                     if(lDays) days.value = JSON.parse(lDays);
-                    if(lExp) expenses.value = JSON.parse(lExp);
+                    // 確保舊資料也能正常載入 (若無 convertedAmount 則設為原始 amount)
+                    if(lExp) {
+                         expenses.value = JSON.parse(lExp).map(exp => ({
+                            ...exp,
+                            convertedAmount: exp.convertedAmount || exp.amount 
+                         }));
+                    }
                     if(lUsers) { participantsStr.value = lUsers; updateParticipants(); }
                     if(lRate) exchangeRate.value = parseFloat(lRate);
                     if(lConf) {
@@ -798,7 +876,7 @@
                 });
 
                 // Map & User Location Logic
-                const initMap = async () => { 
+                const initMap = async (currentItems) => { // 接受 currentItems 作為參數
                     isMapLoading.value = true; await nextTick(); if (!document.getElementById('map')) return;
                     if (mapInstance) { mapInstance.remove(); mapInstance = null; }
                     mapInstance = L.map('map').setView([35.6895, 139.6917], 13);
@@ -812,7 +890,8 @@
                              else userMarker = L.marker([pos.coords.latitude, pos.coords.longitude], { icon: icon }).addTo(mapInstance);
                          }, err => {}, { enableHighAccuracy: true });
                     }
-                    const locs = currentDay.value.items.filter(i => i.location);
+                    // 使用傳入的 currentItems
+                    const locs = currentItems.filter(i => i.location);
                     const bounds = L.latLngBounds();
                     for (const item of locs) {
                         try { await new Promise(r => setTimeout(r, 500)); const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(item.location)}`); const d = await res.json(); if (d && d.length > 0) { const lat = parseFloat(d[0].lat); const lon = parseFloat(d[0].lon); L.marker([lat, lon]).addTo(mapInstance).bindPopup(`<b>${item.activity}</b><br>${item.location}`); bounds.extend([lat, lon]); } } catch (e) {}
@@ -821,14 +900,18 @@
                     if(locs.length > 0) mapInstance.fitBounds(bounds, { padding: [50, 50] });
                 };
                 const centerOnUser = () => { if(userLocation.value && mapInstance) mapInstance.flyTo([userLocation.value.lat, userLocation.value.lng], 15); };
-                watch(viewMode, (v) => { if(v === 'map') initMap(); });
-                watch(currentDayIdx, () => { if(viewMode.value === 'map') initMap(); });
+                
+                // 修正：在呼叫 initMap 時傳入 currentDay.value.items
+                watch(viewMode, (v) => { if(v === 'map') initMap(currentDay.value.items); });
+                watch(currentDayIdx, () => { if(viewMode.value === 'map') initMap(currentDay.value.items); });
+                // 修正 HTML 模板中的呼叫
+                // HTML: <button @click="initMap(currentDay.items)" class="p-2 bg-teal-100 text-teal-600 rounded-lg"><i class="ph-bold ph-arrows-clockwise"></i></button>
 
                 return {
                     viewMode, currentDayIdx, days, currentDay, participants, participantsStr, updateParticipants,
                     getGoogleMapLink, addItem, removeItem, removeCurrentDay, addDay,
                     expenses, newExpense, totalExpense, addExpense, removeExpense,
-                    paidByPerson, settlementPlan, exchangeRate,
+                    paidByPerson, settlementPlan, exchangeRate, twdToForeignRate,
                     isOnline, getTimePeriod, weather,
                     isMapLoading, userLocation, initMap, centerOnUser,
                     updateDate, showSetupModal, setup, initTrip, weatherDisplay, detectRate, isRateLoading, currencyLabel, currencySymbol, toggleFlightCard, getDotColor,
