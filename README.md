@@ -1,6 +1,3 @@
-# Japan-Trip-2026-App
-2026 日本旅遊行程 App
-[index.html](https://github.com/user-attachments/files/23872139/index.html)
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -20,6 +17,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
     <style>
+        /* 樣式設定 */
         body { font-family: 'Noto Sans TC', 'Noto Sans JP', sans-serif; background-color: #F3F4F6; }
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
@@ -49,7 +47,7 @@
 
     <div id="app" class="flex flex-col h-full max-w-md mx-auto w-full bg-white shadow-2xl relative sm:rounded-xl sm:my-4 sm:h-[95vh] sm:border-4 sm:border-slate-100">
 
-        <!-- Header -->
+        <!-- Header (頂部標題和導航) -->
         <header class="bg-teal-600 text-white shrink-0 z-20 shadow-md">
             <div class="p-4 flex justify-between items-center">
                 <div class="flex items-center gap-3">
@@ -79,6 +77,7 @@
                     </div>
                 </div>
             </div>
+            <!-- 日期切換欄 -->
             <div class="flex overflow-x-auto hide-scroll px-2 pb-3 space-x-3 snap-x">
                 <div v-for="(day, index) in days" :key="index" @click="currentDayIdx = index" class="snap-center shrink-0 flex flex-col items-center justify-center w-16 h-16 rounded-xl cursor-pointer transition-all border-2" :class="currentDayIdx === index ? 'bg-white text-teal-600 border-white shadow-lg scale-105' : 'bg-teal-500/50 text-teal-100 border-transparent hover:bg-teal-500'">
                     <span class="text-xs font-medium opacity-80">{{ day.shortDate }}</span>
@@ -88,7 +87,7 @@
             </div>
         </header>
 
-        <!-- Main Content -->
+        <!-- Main Content (主內容區) -->
         <main class="flex-1 overflow-y-auto bg-slate-50 relative hide-scroll">
             
             <!-- 行程表 (Plan View) -->
@@ -407,10 +406,10 @@
     <script type="module">
         import { createApp, ref, computed, watch, onMounted, nextTick, reactive } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
         
-        // --- FIREBASE 設定區 (請使用者填寫) ---
+        // --- FIREBASE 設定區 ---
         const useFirebase = false; 
         const firebaseConfig = { /* apiKey: "...", ... */ };
-        // ------------------------------------
+        // -----------------------
 
         let appInstance, db;
         if (useFirebase) {
@@ -421,6 +420,70 @@
                 });
             });
         }
+        
+        // --- 匯入的名古屋 8 日行程範本 ---
+        const getInitialItems = (dayIndex) => {
+            const nagoyaData = [
+                // Day 1: 5/1 抵達名古屋・榮區散策
+                { title: '抵達名古屋・榮區散策', flight: { type: 'arrival', startTime: '15:00', startAirport: 'TPE', number: 'CI/BR/JL', endTime: '18:00', endAirport: 'NGO', arrivalOffset: 0 }, items: [
+                    { time: '18:30', type: 'transport', activity: '機場 → 名古屋 (μSky或名鐵特急)', location: '中部機場', note: '車程約 30-40 分鐘' },
+                    { time: '19:30', type: 'food', activity: '世界の山ちゃん (幻の手羽先)', location: '榮區', note: '主推 / 備選: 山本屋味噌煮込み、味仙 (台灣拉麵)' },
+                    { time: '21:00', type: 'spot', activity: '榮區散策', location: '榮區', note: '欣賞名古屋電視塔' }
+                ]},
+                // Day 2: 5/2 名古屋城・熱田神宮・大須商店街
+                { title: '名古屋城・熱田神宮・大須商店街', flight: null, items: [
+                    { time: '09:00', type: 'spot', activity: '名古屋城', location: '名古屋城', note: '欣賞金鯱與本丸御殿' },
+                    { time: '12:00', type: 'food', activity: '矢場とん味噌豬排', location: '大須商店街', note: '備選: 宮きしめん／大須甜點' },
+                    { time: '13:30', type: 'spot', activity: '大須商店街', location: '大須觀音', note: '購物與甜點巡禮' },
+                    { time: '16:30', type: 'spot', activity: '熱田神宮', location: '熱田神宮', note: '三大神器草薙劍供奉處' }
+                ]},
+                // Day 3: 5/3 犬山城・城下町一日遊
+                { title: '犬山城・城下町一日遊', flight: null, items: [
+                    { time: '09:00', type: 'transport', activity: '名鐵名古屋 → 犬山站', location: '名鐵名古屋站', note: '車程約 25–35 分鐘' },
+                    { time: '10:30', type: 'spot', activity: '犬山城 (國寶)', location: '犬山城', note: '日本現存最古老的天守之一' },
+                    { time: '12:30', type: 'food', activity: '犬山城下町小吃', location: '犬山城下町', note: '必吃: 布丁、抹茶冰、串物 / 備選: 昭和橫丁食堂' },
+                    { time: '15:00', type: 'spot', activity: '城下町散策', location: '犬山城下町', note: '' }
+                ]},
+                // Day 4: 5/4 名古屋港水族館・港區散策
+                { title: '名古屋港水族館・港區散策', flight: null, items: [
+                    { time: '10:00', type: 'spot', activity: '名古屋港水族館', location: '名古屋港水族館', note: '欣賞海豚表演、虎鯨' },
+                    { time: '13:00', type: 'food', activity: '水族館周邊海鮮丼', location: '名古屋港', note: '備選: JETTY 港購物中心食堂' },
+                    { time: '15:00', type: 'spot', activity: '港區散策', location: '名古屋港', note: '搭乘地鐵名港線' }
+                ]},
+                // Day 5: 5/5 高山・白川鄉一日遊
+                { title: '高山・白川鄉一日遊', flight: null, items: [
+                    { time: '07:30', type: 'transport', activity: '高速巴士 → 高山', location: '名古屋巴士中心', note: '車程較長，建議提前預約' },
+                    { time: '11:30', type: 'spot', activity: '高山老街散策', location: '高山老街', note: '飛驒小京都' },
+                    { time: '13:00', type: 'food', activity: '高山飛驒牛握壽司', location: '高山', note: '備選: 白川鄉合掌村食堂' },
+                    { time: '15:00', type: 'transport', activity: '巴士 → 白川鄉', location: '高山', note: '' },
+                    { time: '16:00', type: 'spot', activity: '白川鄉合掌村', location: '白川鄉', note: '世界文化遺產' }
+                ]},
+                // Day 6: 5/6 吉卜力樂園
+                { title: '吉卜力樂園', flight: null, items: [
+                    { time: '10:00', type: 'transport', activity: '搭乘磁浮鐵道', location: '愛・地球博記念公園站', note: '前往吉卜力樂園' },
+                    { time: '11:00', type: 'spot', activity: '吉卜力樂園 (大倉庫)', location: '吉卜力樂園', note: '建議事先訂票' },
+                    { time: '13:00', type: 'food', activity: '園區 Café', location: '吉卜力樂園', note: '備選: 魔女谷甜點' },
+                    { time: '17:00', type: 'shop', activity: 'MOZO 購物中心', location: 'MOZO', note: '樂園結束後可前往購物' }
+                ]},
+                // Day 7: 5/7 榮・名駅購物日
+                { title: '榮・名駅購物日', flight: null, items: [
+                    { time: '10:00', type: 'shop', activity: 'JR 名古屋站周邊購物', location: 'JR 名古屋站', note: '高島屋、名鐵百貨等' },
+                    { time: '13:00', type: 'food', activity: 'HARBS 千層蛋糕', location: '名站百貨', note: '備選: 名駅百貨餐廳' },
+                    { time: '15:00', type: 'shop', activity: 'BIC Camera 採購', location: 'BIC Camera 名古屋站', note: '電器、藥妝' },
+                    { time: '17:00', type: 'food', activity: '晚餐', location: '名古屋車站地下街', note: '最後品嚐名古屋美食' }
+                ]},
+                // Day 8: 5/8 回程・最後採購
+                { title: '回程・最後採購', flight: { type: 'departure', startTime: '19:00', startAirport: 'NGO', number: 'CI/BR/JL', endTime: '22:00', endAirport: 'TPE', arrivalOffset: 0 }, items: [
+                    { time: '09:00', type: 'shop', activity: '飯店周邊最後採購', location: '飯店附近', note: '便利商店或超市' },
+                    { time: '12:00', type: 'food', activity: '車站便當', location: 'JR 名古屋站', note: '在車站購買午餐' },
+                    { time: '16:00', type: 'transport', activity: '前往中部機場', location: '名古屋車站', note: '預留充足時間' }
+                ]},
+            ];
+
+            return nagoyaData[dayIndex] || { title: '行程規劃', flight: null, items: [] };
+        };
+        // --- 結束初始行程設定 ---
+
 
         createApp({
             setup() {
@@ -445,17 +508,18 @@
                 const exchangeRate = ref(0.215);
                 const newExpense = ref({ item: '', amount: '', payer: '我' });
 
-                // 暫存與設定
+                // 暫存與設定 (預設為名古屋 8 日行程)
                 const isRateLoading = ref(false);
                 const isMapLoading = ref(false);
                 const userLocation = ref(null);
                 const weather = ref({ temp: null, icon: 'ph-sun', code: 0, location: '', daily: [] });
-                const setup = ref({ destination: 'Tokyo', startDate: new Date().toISOString().split('T')[0], days: 5, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' });
+                // 預設設定改為名古屋 (Nagoya, 8 days, JPY)
+                const setup = ref({ destination: 'Nagoya', startDate: new Date().toISOString().split('T')[0], days: 8, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' });
 
-                // 智慧推薦系統 (取代靜態清單)
+                // 智慧推薦系統
                 const recommendationsMap = reactive({});
                 const isSearchingRecs = ref(false);
-                const searchTargetIndex = ref(''); // 記錄正在搜尋的 item (dayIdx-itemIdx)
+                const searchTargetIndex = ref(''); 
 
                 // --- Computed ---
                 const currentDay = computed(() => days.value[currentDayIdx.value] || {items:[], flight:null, date:'', title:''});
@@ -536,8 +600,11 @@
                 const removeExpense = (idx) => expenses.value.splice(idx, 1);
 
                 // --- LBS 推薦功能 ---
+                let mapInstance = null;
+                let userMarker = null;
+                
                 const searchNearby = async (item, idx) => {
-                    if (!item.location || item.type !== 'food') return; // Only food
+                    if (!item.location || item.type !== 'food') return; 
                     
                     const key = `${currentDayIdx.value}-${idx}`;
                     searchTargetIndex.value = key;
@@ -545,7 +612,6 @@
                     recommendationsMap[key] = []; 
 
                     try {
-                        // 1. 先 Geocode 取得座標
                         const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(item.location)}&limit=1`);
                         const geoData = await geoRes.json();
                         
@@ -553,7 +619,6 @@
                             const lat = geoData[0].lat;
                             const lon = geoData[0].lon;
                             
-                            // 2. 用座標搜附近
                             let query = 'restaurant';
                             const finalQuery = `${query} near ${item.location}`;
                             const searchRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(finalQuery)}&limit=4`);
@@ -561,7 +626,7 @@
                             
                             recommendationsMap[key] = searchData.map(place => ({
                                 name: place.name || place.display_name.split(',')[0], 
-                                location: place.name || place.display_name.split(',')[0], // Use name as location
+                                location: place.name || place.display_name.split(',')[0], 
                                 note: '推薦地點'
                             }));
                             
@@ -579,7 +644,7 @@
                 
                 const applyRecommendation = (item, rec) => {
                     item.activity = rec.name;
-                    item.location = rec.name; // Update location to specific name
+                    item.location = rec.name; 
                 };
 
                 // --- Auto Detect ---
@@ -629,7 +694,8 @@
                     localStorage.setItem('travel_app_index', JSON.stringify(tripList.value));
                 };
                 const createNewTrip = () => {
-                    setup.value = { destination: '', startDate: new Date().toISOString().split('T')[0], days: 5, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' };
+                    // 重設為名古屋預設值
+                    setup.value = { destination: 'Nagoya', startDate: new Date().toISOString().split('T')[0], days: 8, rate: 0.215, currency: 'JPY', langCode: 'ja', langName: '日文' };
                     showSetupModal.value = true;
                     showTripMenu.value = false;
                 };
@@ -646,12 +712,17 @@
                         const mm = curr.getMonth()+1; const dd = curr.getDate();
                         const yyyy = curr.getFullYear();
                         const fullDate = `${yyyy}-${mm < 10 ? '0'+mm : mm}-${dd < 10 ? '0'+dd : dd}`;
+                        
+                        // 載入初始行程內容 (使用名古屋範本)
+                        const initial = getInitialItems(i);
+
                         newDays.push({
                             date: `${mm < 10 ? '0'+mm : mm}/${dd < 10 ? '0'+dd : dd} (${dNames[curr.getDay()]})`,
                             shortDate: `${mm}/${dd}`,
                             fullDate: fullDate,
-                            title: i===0?'抵達 & 探索':'行程規劃',
-                            items: [], flight: null
+                            title: initial.title, 
+                            items: initial.items, 
+                            flight: initial.flight 
                         });
                     }
 
@@ -702,7 +773,6 @@
                     
                     // Firebase switch logic if enabled
                     if (useFirebase && db) {
-                        // tripRef = doc(db, "trips", id); // Dynamic path
                         // ... logic to re-bind snapshot ...
                     }
                 };
@@ -711,12 +781,12 @@
                 onMounted(() => {
                     loadTripList();
                     if (tripList.value.length > 0) {
-                        switchTrip(tripList.value[0].id); // Load latest
+                        switchTrip(tripList.value[0].id); // 載入最新的行程
                     } else {
-                        showSetupModal.value = true; // First time
+                        showSetupModal.value = true; // 第一次使用，開啟設定視窗
                     }
                     
-                    // Watchers for Auto-Save
+                    // 自動儲存到瀏覽器
                     watch([days, expenses, exchangeRate, participantsStr], () => {
                         if (!currentTripId.value) return;
                         localStorage.setItem(`${currentTripId.value}_days`, JSON.stringify(days.value));
