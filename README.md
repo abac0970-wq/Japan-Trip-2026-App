@@ -1,3 +1,4 @@
+[Uploading index.html…]()
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -491,7 +492,7 @@
                 const currentDayIdx = ref(0);
                 const isOnline = ref(false);
                 const isFirebaseReady = ref(false);
-                let updatingFromRemote = false;
+                let updatingFromRemote = null;
                 let geoWatchId = null;
 
                 // 多旅程
@@ -595,6 +596,7 @@
                 const removeItem = (idx) => currentDay.value.items.splice(idx, 1);
                 const addDay = () => days.value.push({ date: `Day ${days.value.length+1}`, title: '', items: [] });
                 const removeCurrentDay = () => { if(days.value.length>1 && confirm('刪除?')) days.value.splice(currentDayIdx.value, 1); };
+                // 修正 Google 地圖連結的格式，確保能正確查詢
                 const getGoogleMapLink = (loc) => loc ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}` : '#';
                 const addExpense = () => { if(newExpense.value.item) { expenses.value.unshift({...newExpense.value}); newExpense.value.item=''; newExpense.value.amount=''; }};
                 const removeExpense = (idx) => expenses.value.splice(idx, 1);
